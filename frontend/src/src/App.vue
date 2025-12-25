@@ -1,69 +1,128 @@
 <template>
   <div id="app">
-    <h1>用户信息</h1>
-    <div v-if="loading">加载中...</div>
-    <div v-else-if="error">{{ error }}</div>
-    <div v-else class="user-info">
-      <p><strong>姓名: </strong>{{ user.name }}</p>
-      <p><strong>年龄: </strong>{{ user.age }}</p>
+    <Navbar 
+      :currentMenu="currentMenu" 
+      @menu-change="switchMenu"
+    />
+    <div class="content">
+      <component :is="currentComponent" />
     </div>
   </div>
-</template>>
+</template>
 
-<script>
-  import axios from "axios";
-  export  default {
-    name: 'App',
-    data() {
-      return {
-        user: {},
-        loading: true,
-        error: null,
-        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
-      };
-    },
-    mounted() {
-      this.fetchUser();
-    },
-    methods: {
-      async fetchUser() {
-        try {
-          const response = await axios.get('${this.apiBaseUrl}/api/user');
-          console.log(response)
-          this.user = response.data;
-          this.loading = false;
-        } catch (err) {
-          this.error = '获取用户信息失败: ' + err.message;
-          this.loading = false;
-        }
-      }
+<script lang="ts">
+import { defineComponent, computed } from 'vue'
+import Navbar from './components/Navbar.vue'
+import Home from './views/Home.vue'
+import Music from './views/Music.vue'
+import Movie from './views/Movie.vue'
+import Computer from './views/Computer.vue'
+import Math from './views/Math.vue'
+
+export default defineComponent({
+  name: 'App',
+  components: {
+    Navbar,
+    Home,
+    Music,
+    Movie,
+    Computer,
+    Math
+  },
+  data() {
+    return {
+      currentMenu: 'home' as string
     }
-  };
+  },
+  computed: {
+    currentComponent() {
+      const componentMap: Record<string, string> = {
+        home: 'Home',
+        music: 'Music',
+        movie: 'Movie',
+        computer: 'Computer',
+        math: 'Math'
+      }
+      return componentMap[this.currentMenu] || 'Home'
+    }
+  },
+  methods: {
+    switchMenu(menuId: string): void {
+      this.currentMenu = menuId
+    }
+  }
+})
 </script>
 
 <style>
-  #app {
-    font-family: Arial, sans-serif;
-    max-width: 600px;
-    margin: 50px auto;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-  }
+  * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-  h1 {
-    color: #333;
-  }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  background: #f5f5f5;
+}
 
-  .user-info {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 5px;
-    margin-top: 20px;
-  }
+#app {
+  min-height: 100vh;
+}
 
-  p {
-    font-size: 18px;
-    margin: 10px 0;
+/* 内容区域 */
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* 页面样式（所有页面共用） */
+.page {
+  background: white;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page h1 {
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 3px solid #667eea;
+}
+
+.page p {
+  line-height: 1.8;
+  color: #666;
+  margin: 15px 0;
+  font-size: 16px;
+}
+
+.error {
+  color: #dc3545;
+  background: #f8d7da;
+  padding: 15px;
+  border-radius: 5px;
+  border-left: 4px solid #dc3545;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page {
+    padding: 25px;
+  }
+}
 </style>

@@ -3,6 +3,9 @@
 cur_dir=$(cd $(dirname $0); pwd)
 src_dir=$cur_dir/../src
 
+set -e
+set -x
+
 # nvm最新版本
 
 # node最新稳定版
