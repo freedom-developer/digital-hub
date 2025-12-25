@@ -18,7 +18,8 @@
       return {
         user: {},
         loading: true,
-        error: null
+        error: null,
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888'
       };
     },
     mounted() {
@@ -27,7 +28,8 @@
     methods: {
       async fetchUser() {
         try {
-          const response = await axios.get('http://localhost:8888/api/user');
+          const response = await axios.get('${this.apiBaseUrl}/api/user');
+          console.log(response)
           this.user = response.data;
           this.loading = false;
         } catch (err) {
