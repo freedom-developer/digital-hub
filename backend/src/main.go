@@ -1,76 +1,82 @@
 package main
 
 import (
-	"database/sql"
 	"log"
-	"net/http"
-	"time"
+	"myapp/config"
+	"myapp/database"
+	"myapp/handlers"
+	"myapp/watcher"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	_ "github.com/go-sql-driver/mysql"
 )
 
-type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
-
-var db *sql.DB
-
 func main() {
-	var err error
-	
-	dsn := "wsb:admin1234@tcp(127.0.0.1:3306)/myapp?parseTime=true"
-	db, err = sql.Open("mysql", dsn)
+	// 加载配置
+	cfg := config.LoadConfig()
+
+	// 初始化数据库
+	if err := database.InitDB(cfg); err != nil {
+		log.Fatalf("初始化数据库失败: %v", err)
+	}
+
+	// 启动文件监控
+	fileWatcher, err := watcher.NewFileWatcher(cfg.MusicDir)
 	if err != nil {
-		log.Fatal("数据库连接失败:", err)
+		log.Fatalf("创建文件监控器失败: %v", err)
 	}
-	defer db.Close()
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
-
-	if err := db.Ping(); err != nil {
-		log.Fatal("数据库Ping失败:", err)
+	if err := fileWatcher.Start(); err != nil {
+		log.Fatalf("启动文件监控失败: %v", err)
 	}
-	log.Println("数据库连接成功!")
+	defer fileWatcher.Close()
 
+	// 创建 Gin 实例
 	r := gin.Default()
 
-	// ⭐⭐⭐ 关键：CORS 配置（必须在路由之前）
+	// 配置 CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			"http://127.0.0.1:5173",
-			"http://172.16.85.131:5173",  // ⭐ 你的实际 IP
-		},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
-		MaxAge:           12 * 3600,
 	}))
 
+	// 创建处理器
+	musicHandler := handlers.NewMusicHandler(cfg.MusicDir)
+
 	// 路由
-	r.GET("/api/user", getUser)
+	api := r.Group("/api")
+	{
+		// 用户接口
+		api.GET("/user", handlers.GetUser)
 
-	log.Println("后端服务启动在 0.0.0.0:8888")
-	r.Run("0.0.0.0:8888")
-}
-
-func getUser(c *gin.Context) {
-	var user User
-	err := db.QueryRow("SELECT id, name, age FROM users LIMIT 1").Scan(
-		&user.ID, &user.Name, &user.Age,
-	)
-	if err != nil {
-		log.Println("查询错误:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
-		return
+		// 音乐接口
+		api.GET("/music", musicHandler.GetMusicList)
+		api.GET("/music/play/:id", musicHandler.PlayMusic)
+		api.GET("/music/download/:id", musicHandler.DownloadMusic)
 	}
-	c.JSON(http.StatusOK, user)
+
+	// 优雅关闭
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+		log.Println("收到关闭信号，正在关闭服务...")
+		fileWatcher.Close()
+		os.Exit(0)
+	}()
+
+	// 启动服务
+	addr := "0.0.0.0:" + cfg.ServerPort
+	log.Printf("🚀 服务器启动在: http://%s", addr)
+	log.Printf("📁 监控音乐目录: %s", cfg.MusicDir)
+
+	if err := r.Run(addr); err != nil {
+		log.Fatalf("启动服务器失败: %v", err)
+	}
 }

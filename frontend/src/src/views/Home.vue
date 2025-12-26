@@ -1,14 +1,27 @@
 <template>
-  <div class="page">
-    <h1>首页</h1>
-    <div v-if="loading">加载中...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else class="user-card">
-      <h2>用户信息</h2>
-      <p><strong>ID:</strong> {{ user.id }}</p>
-      <p><strong>姓名:</strong> {{ user.name }}</p>
-      <p><strong>年龄:</strong> {{ user.age }}</p>
-    </div>
+  <div class="home">
+    <el-card shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>用户信息</span>
+        </div>
+      </template>
+      
+      <div v-loading="loading">
+        <el-alert
+          v-if="error"
+          :title="error"
+          type="error"
+          :closable="false"
+        />
+        
+        <el-descriptions v-else :column="1" border>
+          <el-descriptions-item label="ID">{{ user.id }}</el-descriptions-item>
+          <el-descriptions-item label="姓名">{{ user.name }}</el-descriptions-item>
+          <el-descriptions-item label="年龄">{{ user.age }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -45,26 +58,16 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.user-card {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 20px;
+.home {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.user-card h2 {
-  color: #667eea;
-  font-size: 20px;
-  margin-bottom: 15px;
-}
-
-.user-card p {
-  margin: 10px 0;
-}
-
-.user-card strong {
-  color: #333;
-  display: inline-block;
-  width: 80px;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  font-weight: bold;
 }
 </style>
