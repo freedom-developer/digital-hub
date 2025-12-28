@@ -1,30 +1,17 @@
-package handlers
+package music
 
 import (
-	"myapp/database"
-	"myapp/models"
 	"net/http"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
 
-type MusicHandler struct {
-	musicDir string
-}
+// 获取整个音乐列表
+func (ms *MusicService) GetMusicList(c *gin.Context) {
+	var musicList []Music
 
-func NewMusicHandler(musicDir string) *MusicHandler {
-	return &MusicHandler{
-		musicDir: musicDir,
-	}
-}
-
-// 获取音乐列表
-func (h *MusicHandler) GetMusicList(c *gin.Context) {
-	var musicList []models.Music
-
-	db := database.GetDB()
-	result := db.Order("id ASC").Find(&musicList)
+	result := ms.db.Order("id ASC").Find(&musicList)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -42,12 +29,11 @@ func (h *MusicHandler) GetMusicList(c *gin.Context) {
 }
 
 // 播放音乐
-func (h *MusicHandler) PlayMusic(c *gin.Context) {
+func (ms *MusicService) PlayMusic(c *gin.Context) {
 	id := c.Param("id")
 
-	var music models.Music
-	db := database.GetDB()
-	result := db.First(&music, id)
+	var music Music
+	result := ms.db.First(&music, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -68,12 +54,11 @@ func (h *MusicHandler) PlayMusic(c *gin.Context) {
 }
 
 // 下载音乐文件
-func (h *MusicHandler) DownloadMusic(c *gin.Context) {
+func (ms *MusicService) DownloadMusic(c *gin.Context) {
 	id := c.Param("id")
 
-	var music models.Music
-	db := database.GetDB()
-	result := db.First(&music, id)
+	var music Music
+	result := ms.db.First(&music, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -84,19 +69,19 @@ func (h *MusicHandler) DownloadMusic(c *gin.Context) {
 	}
 
 	// 构建完整文件路径
-	fullPath := filepath.Join(h.musicDir, filepath.Base(music.FilePath))
+	fullPath := filepath.Join(ms.cfg.MusicDir, filepath.Base(music.FilePath))
 
 	// 发送文件
 	c.File(fullPath)
 }
 
-// 获取用户信息（原有接口）
-func GetUser(c *gin.Context) {
-	user := models.User{
-		ID:   1,
-		Name: "张三",
-		Age:  25,
-	}
+// // 获取用户信息（原有接口）
+// func GetUser(c *gin.Context) {
+// 	user := User{
+// 		ID:   1,
+// 		Name: "张三",
+// 		Age:  25,
+// 	}
 
-	c.JSON(http.StatusOK, user)
-}
+// 	c.JSON(http.StatusOK, user)
+// }

@@ -115,6 +115,7 @@ async function fetchMusicList() {
   try {
     loading.value = true
     musicList.value = await musicApi.getMusicList()
+    console.log('获取到的音乐列表:', musicList.value)
     playerStore.setMusicList(musicList.value)
     loading.value = false
   } catch (err: any) {

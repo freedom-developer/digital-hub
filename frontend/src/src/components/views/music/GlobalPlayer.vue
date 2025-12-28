@@ -18,7 +18,7 @@
                 </div>
               </div>
               
-              <div class="music-info">
+              <div class="music-info" style="width: 200px">
                 <el-text class="music-title" truncated>{{ playerStore.currentMusic.name }}</el-text>
                 <el-text type="info" size="small">
                   <el-icon><VideoPlay v-if="playerStore.isPlaying" /><VideoPause v-else /></el-icon>
@@ -33,6 +33,15 @@
                 <div style="display: flex; align-items: center; gap: 16px; width: 100%;">
                     <!-- 播放控制按钮 -->
                     <el-space :size="8">
+                        <!-- 播放模式按钮 -->
+                        <el-button circle size="small" @click="playerStore.togglePlayMode()" :title="getPlayModeTitle()">
+                          <el-icon>
+                            <Refresh v-if="playerStore.playMode === 'order'" />
+                            <Sort v-else-if="playerStore.playMode === 'random'" />
+                            <RefreshLeft v-else />
+                          </el-icon>
+                        </el-button>
+
                         <el-button circle size="small" :disabled="!playerStore.hasPrevious" @click="playerStore.playPrevious()">
                             <el-icon><DArrowLeft /></el-icon>
                         </el-button>
@@ -113,9 +122,12 @@ import {
   DArrowRight,
   Microphone,
   Mute,
-  Headset
+  Headset,
+  Refresh,
+  Sort,
+  RefreshLeft
 } from '@element-plus/icons-vue'
-import { usePlayerStore } from '@/stores/player'
+import { PlayMode, usePlayerStore } from '@/stores/player'
 
 const playerStore = usePlayerStore()
 const audioPlayer = ref<HTMLAudioElement>()
@@ -185,6 +197,16 @@ function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+// 获取播放模式提示文字
+function getPlayModeTitle() {
+  const modeNames = {
+    [PlayMode.ORDER]: '顺序播放',
+    [PlayMode.RANDOM]: '随机播放',
+    [PlayMode.LOOP]: '单曲循环'
+  }
+  return modeNames[playerStore.playMode]
 }
 </script>
 

@@ -14,7 +14,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import Navbar from './components/Navbar.vue'
-import GlobalPlayer from './components/GlobalPlayer.vue';
+import GlobalPlayer from './components/views/music/GlobalPlayer.vue';
 
 export default defineComponent({
   name: 'App',

@@ -1,22 +1,22 @@
-package watcher
+package music
 
 import (
 	"log"
-	"myapp/database"
-	"myapp/models"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
+	"gorm.io/gorm"
 )
 
 type FileWatcher struct {
 	watcher  *fsnotify.Watcher
 	musicDir string
+	db       *gorm.DB
 }
 
-func NewFileWatcher(musicDir string) (*FileWatcher, error) {
+func NewFileWatcher(musicDir string, db *gorm.DB) (*FileWatcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -30,6 +30,7 @@ func NewFileWatcher(musicDir string) (*FileWatcher, error) {
 	return &FileWatcher{
 		watcher:  watcher,
 		musicDir: musicDir,
+		db:       db,
 	}, nil
 }
 
@@ -59,12 +60,13 @@ func (fw *FileWatcher) watch() {
 				return
 			}
 
+			log.Printf("检测到文件事件: %s - %s", event.Op, event.Name)
+
 			// 只处理音频文件
 			if !isMusicFile(event.Name) {
+				log.Printf("忽略非音乐文件: %s", event.Name)
 				continue
 			}
-
-			log.Printf("检测到文件事件: %s - %s", event.Op, event.Name)
 
 			switch {
 			case event.Op&fsnotify.Create == fsnotify.Create:
@@ -109,23 +111,21 @@ func (fw *FileWatcher) handleCreate(filePath string) {
 	fileName := getFileName(filePath)
 	relativePath := getRelativePath(fw.musicDir, filePath)
 
-	db := database.GetDB()
-
 	// 检查是否已存在
-	var existing models.Music
-	result := db.Where("name = ?", fileName).First(&existing)
+	var existing Music
+	result := fw.db.Where("name = ?", fileName).First(&existing)
 	if result.Error == nil {
 		log.Printf("音乐已存在: %s", fileName)
 		return
 	}
 
 	// 添加到数据库
-	music := models.Music{
+	music := Music{
 		Name:     fileName,
 		FilePath: relativePath,
 	}
 
-	if err := db.Create(&music).Error; err != nil {
+	if err := fw.db.Create(&music).Error; err != nil {
 		log.Printf("添加音乐失败: %v", err)
 		return
 	}
@@ -136,9 +136,7 @@ func (fw *FileWatcher) handleCreate(filePath string) {
 func (fw *FileWatcher) handleDelete(filePath string) {
 	fileName := getFileName(filePath)
 
-	db := database.GetDB()
-
-	result := db.Where("name = ?", fileName).Delete(&models.Music{})
+	result := fw.db.Where("name = ?", fileName).Delete(&Music{})
 	if result.Error != nil {
 		log.Printf("删除音乐失败: %v", result.Error)
 		return
@@ -171,7 +169,6 @@ func (fw *FileWatcher) Close() error {
 }
 
 // 辅助函数
-
 func isMusicFile(filePath string) bool {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	musicExts := []string{".mp3", ".flac", ".wav", ".aac", ".ogg", ".m4a"}

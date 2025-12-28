@@ -3,6 +3,13 @@ import { ref, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { Music } from '@/types'
 
+// 定义播放模式类型
+export enum PlayMode {
+  ORDER = 'order',      // 顺序播放
+  RANDOM = 'random',    // 随机播放
+  LOOP = 'loop'         // 单曲循环
+}
+
 export const usePlayerStore = defineStore('player', () => {
   // 状态
   const currentMusic = ref<Music | null>(null)
@@ -12,6 +19,7 @@ export const usePlayerStore = defineStore('player', () => {
   const volume = ref(50)
   const isMuted = ref(false)
   const musicList = ref<Music[]>([])
+  const playMode = ref<PlayMode>(PlayMode.ORDER) // 默认顺序播放
   
   // 音频元素引用
   let audioElement: HTMLAudioElement | null = null
@@ -32,7 +40,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   // 方法
   function setAudioElement(audio: HTMLAudioElement) {
-    console.log('设置音频元素:', audio)
+    // console.log('设置音频元素:', audio)
     audioElement = audio
     audio.volume = volume.value / 100
   }
@@ -116,7 +124,6 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function seek(time: number) {
-        console.log('🔍 Seek 到:', time)
     if (audioElement) {
       try {
         audioElement.currentTime = time
@@ -168,18 +175,68 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function handleEnded() {
+    console.log('当前音乐播放结束，播放下一首')
     isPlaying.value = false
-    if (hasNext.value) {
-      playNext()
+    const nextMusic = getNextMusic()
+    if (nextMusic) {
+      play(nextMusic)
     } else {
       ElMessage.info('播放列表已结束')
     }
+    // if (hasNext.value) {
+    //   playNext()
+    // } else {
+    //   ElMessage.info('播放列表已结束')
+    // }
   }
 
   function handleError(event: Event) {
     console.error('音频加载错误:', event)
     ElMessage.error('音频加载失败，请检查文件是否存在')
     isPlaying.value = false
+  }
+
+  // 切换播放模式
+  function togglePlayMode() {
+    const modes = [PlayMode.ORDER, PlayMode.RANDOM, PlayMode.LOOP]
+    const currentModeIndex = modes.indexOf(playMode.value)
+    const nextModeIndex = (currentModeIndex + 1) % modes.length
+    playMode.value = modes[nextModeIndex]
+    
+    const modeNames = {
+      [PlayMode.ORDER]: '顺序播放',
+      [PlayMode.RANDOM]: '随机播放',
+      [PlayMode.LOOP]: '单曲循环'
+    }
+    
+    ElMessage.success({
+      message: `切换到${modeNames[playMode.value]}`,
+      grouping: true
+    })
+  }
+
+  // 根据播放模式获取下一首歌
+  function getNextMusic(): Music | null {
+    if (musicList.value.length === 0) return null
+    console.log('当前播放模式:', playMode.value)
+    switch (playMode.value) {
+      case PlayMode.LOOP:
+        // 单曲循环，返回当前歌曲
+        return currentMusic.value
+        
+      case PlayMode.RANDOM:
+        // 随机播放
+        const randomIndex = Math.floor(Math.random() * musicList.value.length)
+        return musicList.value[randomIndex]
+        
+      case PlayMode.ORDER:
+      default:
+        // 顺序播放
+        if (hasNext.value) {
+          return musicList.value[currentIndex.value + 1]
+        }
+        return null
+    }
   }
 
   return {
@@ -191,6 +248,7 @@ export const usePlayerStore = defineStore('player', () => {
     volume,
     isMuted,
     musicList,
+    playMode,
     // 计算属性
     currentIndex,
     hasPrevious,
@@ -204,6 +262,7 @@ export const usePlayerStore = defineStore('player', () => {
     togglePlay,
     playPrevious,
     playNext,
+    togglePlayMode,
     seek,
     setVolume,
     toggleMute,

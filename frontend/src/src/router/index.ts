@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
-import Home  from "@/views/Home.vue";
-import Music from "@/views/Music.vue";
-import Movie from "@/views/Movie.vue";
-import Computer from "@/views/Computer.vue";
-import Math from "@/views/Math.vue";
+import Home  from "@/components/views/home/Home.vue";
+import Music from "@/components/views/music/Music.vue";
+import Movie from "@/components/views/movie/Movie.vue";
+import Computer from "@/components/views/computer/Computer.vue";
+import Math from "@/components/views/math/Math.vue";
 
 const routes: RouteRecordRaw[] = [
     {
