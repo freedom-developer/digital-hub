@@ -7,6 +7,7 @@ import (
 	"myapp/database"
 	logger "myapp/log"
 	"myapp/servers/music"
+	"myapp/servers/user"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ type ServerManager struct {
 	r            *gin.Engine
 	rg           *gin.RouterGroup
 	musicService *music.MusicService
+	us           *user.UserService
 }
 
 func NewServerManager(ctx *context.Context, config *config.Config) *ServerManager {
@@ -49,6 +51,11 @@ func NewServerManager(ctx *context.Context, config *config.Config) *ServerManage
 		logger.ZFatal(ctx, "初始化音乐服务失败", nil)
 	}
 
+	us := user.NewUserService(nil, db, rg)
+	if us == nil {
+		logger.ZFatal(ctx, "初始化用户服务失败", nil)
+	}
+
 	return &ServerManager{
 		cfg:          config,
 		db:           db,
@@ -56,6 +63,7 @@ func NewServerManager(ctx *context.Context, config *config.Config) *ServerManage
 		ctx:          ctx,
 		r:            r,
 		rg:           rg,
+		us:           us,
 	}
 }
 
@@ -64,6 +72,9 @@ func (srvMgr *ServerManager) StartAllServers() {
 	if srvMgr.musicService != nil {
 		// 启动音乐服务
 		srvMgr.musicService.Start()
+
+		// 启动用户服务
+		srvMgr.us.Start()
 	}
 
 	// 启动HTTP服务器

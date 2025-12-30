@@ -30,6 +30,16 @@ const routes: RouteRecordRaw[] = [
         path: '/math',
         name: 'Math',
         component: Math
+    },
+    {
+        path: '/user/register',
+        name: 'register',
+        component: () => import('@/components/views/user/Register.vue')
+    },
+    {
+        path: '/user/login',
+        name: 'login',
+        component: () => import('@/components/views/user/Login.vue')
     }
 ]
 

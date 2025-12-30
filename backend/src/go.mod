@@ -7,6 +7,7 @@ toolchain go1.24.11
 require gorm.io/driver/mysql v1.6.0
 
 require (
+	github.com/google/uuid v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 )

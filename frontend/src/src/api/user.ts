@@ -7,11 +7,35 @@ const apiClient = axios.create({
   timeout: 10000
 })
 
-// 用户相关 API
+export interface RegisterData {
+  username: string
+  email: string
+  password: string
+}
+
+export interface LoginData {
+  username: string
+  password: string
+}
+
+export interface UserInfo {
+  id: string
+  username: string
+  email: string
+  role: number
+  active: boolean
+  created_at: string
+}
+
 export const userApi = {
-  // 获取用户信息
-  getUser: async (): Promise<User> => {
-    const response = await apiClient.get<User>('/user')
-    return response.data
+  // 注册用户
+  register(data: RegisterData): Promise<UserInfo> {
+    return apiClient.post('/users/register', data)
+  },
+
+  // 用户登录
+  login(data: LoginData): Promise<UserInfo> {
+    return apiClient.post('/users/login', data)
   }
+
 }

@@ -31,3 +31,8 @@ func NewUserService(cfg *UserConfig, db *gorm.DB, rg *gin.RouterGroup) *UserServ
 		rg:  rg,
 	}
 }
+
+func (us *UserService) Start() {
+	// Implementation for retrieving user by ID
+	us.RegisterRouters()
+}

@@ -1,14 +1,17 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        string    `gorm:"primaryKey" json:"id"`
+	ID        string    `gorm:"type:varchar(255); primaryKey" json:"id"`
 	Username  string    `gorm:"type:varchar(255);not null;unique" json:"username"`
 	Email     string    `gorm:"type:varchar(255)" json:"email"`
 	Password  string    `gorm:"type:varchar(255);not pull" json:"password"`
@@ -20,9 +23,9 @@ type User struct {
 
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=20"`
-	Email    string `json:"email" binding:"email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Role     int32  `json:"role" binding:"required,oneof=1 2 3"`
+	Email    string `json:"email"`
+	Password string `json:"password" binding:"required,min=3"`
+	Role     int32  `json:"role"`
 }
 
 type LoginRequest struct {
@@ -99,11 +102,16 @@ func (us *UserService) registerUser(req *RegisterRequest) (*UserResponse, error)
 	if existUser != nil {
 		return nil, fmt.Errorf("用户名已存在")
 	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("密码加密失败")
+	}
 	newUser := &User{
-		ID:        generateID(),
+		ID:        uuid.New().String(),
 		Username:  req.Username,
 		Email:     req.Email,
-		Password:  hashPassword(req.Password),
+		Password:  string(hashedPassword),
 		Role:      req.Role,
 		Active:    true,
 		CreatedAt: time.Now(),
@@ -124,12 +132,31 @@ func (us *UserService) registerUser(req *RegisterRequest) (*UserResponse, error)
 	}, nil
 }
 
-func hashPassword(s string) string {
-	// Example implementation for hashing a password
-	return fmt.Sprintf("hashed-%s", s)
-}
+func (us *UserService) login(req *LoginRequest) (*UserResponse, error) {
+	user, err := us.getUserByName(req.Username)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户不存在")
+		}
+		return nil, err
+	}
 
-func generateID() string {
-	// Example implementation for generating a unique ID
-	return fmt.Sprintf("user-%d", time.Now().UnixNano())
+	if !user.Active {
+		return nil, errors.New("用户未激活")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		return nil, errors.New("密码错误")
+	}
+
+	return &UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Role:      user.Role,
+		Active:    user.Active,
+		CreatedAt: user.CreatedAt.Unix(),
+		UpdatedAt: user.UpdatedAt.Unix(),
+	}, nil
 }
