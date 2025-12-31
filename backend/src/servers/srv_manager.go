@@ -45,15 +45,15 @@ func NewServerManager(ctx *context.Context, config *config.Config) *ServerManage
 
 	rg := r.Group("/api")
 
+	us := user.NewUserService(nil, db, rg)
+	if us == nil {
+		logger.ZFatal(ctx, "初始化用户服务失败", nil)
+	}
+
 	// 初始化音乐服务等
 	musicService := music.NewMusicService(*ctx, &config.MusicConfig, db, rg)
 	if musicService == nil {
 		logger.ZFatal(ctx, "初始化音乐服务失败", nil)
-	}
-
-	us := user.NewUserService(nil, db, rg)
-	if us == nil {
-		logger.ZFatal(ctx, "初始化用户服务失败", nil)
 	}
 
 	return &ServerManager{

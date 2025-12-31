@@ -29,7 +29,13 @@ func NewMusicService(ctx context.Context, cfg *MusicConfig, db *gorm.DB, rg *gin
 	// 自动迁移
 	err = db.AutoMigrate(&Music{})
 	if err != nil {
-		// logger.ZError(&ctx, "数据库自动迁移失败", err)
+		logger.ZError(&ctx, "数据库自动迁移失败", err)
+		return nil
+	}
+
+	err = db.AutoMigrate(&UserMusic{})
+	if err != nil {
+		logger.ZError(&ctx, "数据库自动迁移失败", err)
 		return nil
 	}
 
