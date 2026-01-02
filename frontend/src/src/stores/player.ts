@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { Music } from '@/types'
+import type { Music } from '@/api/music'
 
 // 定义播放模式类型
 export enum PlayMode {
@@ -35,12 +35,12 @@ export const usePlayerStore = defineStore('player', () => {
 
   const currentMusicUrl = computed(() => {
     if (!currentMusic.value) return ''
-    return `/api/music/download/${currentMusic.value.id}`
+    return `${import.meta.env.VITE_API_BASE_URL}/music/download/${currentMusic.value.id}`
   })
 
   // 方法
   function setAudioElement(audio: HTMLAudioElement) {
-    // console.log('设置音频元素:', audio)
+    console.log('设置音频元素:', audio)
     audioElement = audio
     audio.volume = volume.value / 100
   }
@@ -191,8 +191,13 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function handleError(event: Event) {
+    if (!currentMusic.value) {
+      console.log('没有当前音乐，跳过错误处理')
+      return
+    }
     console.error('音频加载错误:', event)
-    ElMessage.error('音频加载失败，请检查文件是否存在')
+    console.log('当前音乐:', currentMusic.value)
+    ElMessage.error('音频加载失败，请检查文件是否存在: ' + currentMusic.value?.name)
     isPlaying.value = false
   }
 

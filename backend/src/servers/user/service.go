@@ -18,12 +18,14 @@ type UserService struct {
 	rg  *gin.RouterGroup
 }
 
-func NewUserService(cfg *UserConfig, db *gorm.DB, rg *gin.RouterGroup) *UserService {
+func NewUserService(cfg *UserConfig, db *gorm.DB, r *gin.Engine) *UserService {
 	err := db.AutoMigrate(&User{})
 	if err != nil {
 		logger.ZError(nil, "数据库自动迁移失败", err)
 		return nil
 	}
+
+	rg := r.Group("/user")
 
 	return &UserService{
 		cfg: cfg,

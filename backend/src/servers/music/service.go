@@ -19,7 +19,7 @@ type MusicService struct {
 	rg          *gin.RouterGroup
 }
 
-func NewMusicService(ctx context.Context, cfg *MusicConfig, db *gorm.DB, rg *gin.RouterGroup) *MusicService {
+func NewMusicService(ctx context.Context, cfg *MusicConfig, db *gorm.DB, r *gin.Engine) *MusicService {
 	watcher, err := NewFileWatcher(cfg.MusicDir, db)
 	if watcher == nil {
 		logger.ZError(&ctx, "创建文件监控器失败", err)
@@ -38,6 +38,8 @@ func NewMusicService(ctx context.Context, cfg *MusicConfig, db *gorm.DB, rg *gin
 		logger.ZError(&ctx, "数据库自动迁移失败", err)
 		return nil
 	}
+
+	rg := r.Group("/music")
 
 	return &MusicService{
 		cfg:         cfg,

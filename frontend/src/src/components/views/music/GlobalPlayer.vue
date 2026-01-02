@@ -141,7 +141,7 @@ onMounted(() => {
   
   setTimeout(() => {
     if (audioPlayer.value) {
-      console.log('✅ 音频元素已找到')
+      console.log('✅ 音频元素已找到: ', audioPlayer.value)
       playerStore.setAudioElement(audioPlayer.value)
     } else {
       console.error('❌ 音频元素未找到')

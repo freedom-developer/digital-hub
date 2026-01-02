@@ -94,13 +94,13 @@
         try {
           loading.value = true
           
-          const userInfo = await userApi.login({
+          const loginRsp = await userApi.login({
             username: loginForm.username,
             password: loginForm.password
           })
-          
-          // 保存用户信息到 localStorage
-          localStorage.setItem('userInfo', JSON.stringify(userInfo))
+
+          localStorage.setItem('token', loginRsp.token)
+          localStorage.setItem('user', JSON.stringify(loginRsp.user))
           
           ElMessage.success('登录成功！')
           

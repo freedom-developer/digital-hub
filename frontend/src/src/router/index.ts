@@ -4,6 +4,7 @@ import Music from "@/components/views/music/Music.vue";
 import Movie from "@/components/views/movie/Movie.vue";
 import Computer from "@/components/views/computer/Computer.vue";
 import Math from "@/components/views/math/Math.vue";
+import User from "@/components/views/user/User.vue";
 
 const routes: RouteRecordRaw[] = [
     {

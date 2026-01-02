@@ -2,7 +2,6 @@ package music
 
 import (
 	"errors"
-	"myapp/servers/user"
 	"time"
 
 	"gorm.io/gorm"
@@ -13,10 +12,6 @@ type UserMusic struct {
 	UserID    string    `gorm:"type:varchar(255);not null;index:idx_user_music_unique,unique" json:"user_id"` // 修正：UseID -> UserID
 	MusicID   uint      `gorm:"not null;index:idx_user_music_unique,unique" json:"music_id"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-
-	// 关联关系（可选，需要时才使用）
-	User  *user.User `gorm:"foreignKey:UserID;references:ID" json:"user,omitempty"`   // 修正：添加 references，使用指针
-	Music *Music     `gorm:"foreignKey:MusicID;references:ID" json:"music,omitempty"` // 修正：使用指针
 }
 
 func (UserMusic) TableName() string {
@@ -26,7 +21,7 @@ func (UserMusic) TableName() string {
 // 收藏音乐
 func (ms *MusicService) addToMusic(userID string, musicID uint) error {
 	userMusic := &UserMusic{
-		UseID:   userID,
+		UserID:  userID,
 		MusicID: musicID,
 	}
 	return ms.db.Create(userMusic).Error
@@ -41,7 +36,7 @@ func (ms *MusicService) removeFromMusic(userID string, musicID string) error {
 func (ms *MusicService) getUserMusicList(userID string) ([]Music, error) {
 	var musicList []Music
 	err := ms.db.Table("musics").
-		Joins("JOIN user_music ON music.id == user_music.music_id").
+		Joins("JOIN user_music ON musics.id = user_music.music_id").
 		Where("user_music.user_id = ?", userID).
 		Order("user_music.created_at DESC").
 		Find(&musicList).Error

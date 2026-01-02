@@ -20,7 +20,6 @@ type ServerManager struct {
 	db           *gorm.DB
 	ctx          *context.Context
 	r            *gin.Engine
-	rg           *gin.RouterGroup
 	musicService *music.MusicService
 	us           *user.UserService
 }
@@ -43,15 +42,13 @@ func NewServerManager(ctx *context.Context, config *config.Config) *ServerManage
 		AllowCredentials: true,
 	}))
 
-	rg := r.Group("/api")
-
-	us := user.NewUserService(nil, db, rg)
+	us := user.NewUserService(nil, db, r)
 	if us == nil {
 		logger.ZFatal(ctx, "初始化用户服务失败", nil)
 	}
 
 	// 初始化音乐服务等
-	musicService := music.NewMusicService(*ctx, &config.MusicConfig, db, rg)
+	musicService := music.NewMusicService(*ctx, &config.MusicConfig, db, r)
 	if musicService == nil {
 		logger.ZFatal(ctx, "初始化音乐服务失败", nil)
 	}
@@ -62,7 +59,6 @@ func NewServerManager(ctx *context.Context, config *config.Config) *ServerManage
 		musicService: musicService,
 		ctx:          ctx,
 		r:            r,
-		rg:           rg,
 		us:           us,
 	}
 }
@@ -76,6 +72,22 @@ func (srvMgr *ServerManager) StartAllServers() {
 		// 启动用户服务
 		srvMgr.us.Start()
 	}
+
+	// 添加外键约束
+	// 为 user_id 添加外键约束
+	srvMgr.db.Exec(`
+		ALTER TABLE user_music 
+		ADD CONSTRAINT fk_user_music_user 
+		FOREIGN KEY (user_id) REFERENCES users(id) 
+		ON DELETE CASCADE
+	`)
+	// 为 music_id 添加外键约束
+	srvMgr.db.Exec(`
+		ALTER TABLE user_music 
+		ADD CONSTRAINT fk_user_music_music 
+		FOREIGN KEY (music_id) REFERENCES musics(id) 
+		ON DELETE CASCADE
+	`)
 
 	// 启动HTTP服务器
 	addr := srvMgr.cfg.SrvConfig.Addr + ":" + srvMgr.cfg.SrvConfig.Port

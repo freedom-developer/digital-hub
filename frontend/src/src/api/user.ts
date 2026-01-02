@@ -1,24 +1,7 @@
-import axios from 'axios'
-import type { User } from '@/types'
+import Login from '@/components/views/user/Login.vue'
+import request from '@/utils/request'
 
-// API 基础配置
-const apiClient = axios.create({
-  baseURL: '/api',
-  timeout: 10000
-})
-
-export interface RegisterData {
-  username: string
-  email: string
-  password: string
-}
-
-export interface LoginData {
-  username: string
-  password: string
-}
-
-export interface UserInfo {
+export interface User {
   id: string
   username: string
   email: string
@@ -27,15 +10,39 @@ export interface UserInfo {
   created_at: string
 }
 
+export interface RegisterReq {
+  username: string
+  email: string
+  password: string
+}
+
+export type RegisterRsp = User
+
+export interface LoginReq {
+  username: string
+  password: string
+}
+
+export interface LoginRsp {
+  token: string
+  user: User
+}
+
+
 export const userApi = {
   // 注册用户
-  register(data: RegisterData): Promise<UserInfo> {
-    return apiClient.post('/users/register', data)
+  register(req: RegisterReq): Promise<User> {
+    return request.post('/user/register', req)
   },
 
   // 用户登录
-  login(data: LoginData): Promise<UserInfo> {
-    return apiClient.post('/users/login', data)
-  }
+  login(req: LoginReq):  Promise<LoginRsp>  {
+    return request.post('/user/login', req)
+  },
+
+  getCurrentUser(): Promise<User> {
+    return request.get('/user/me')
+  },
+  
 
 }

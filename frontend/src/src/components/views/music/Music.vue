@@ -12,7 +12,7 @@
             <el-icon><List /></el-icon>
             <span>所有音乐</span>
             <el-tag size="small" type="info" style="margin-left: auto;">
-              {{ musicList.length }}
+              {{ allMusicList.length }}
             </el-tag>
           </el-menu-item>
           
@@ -89,6 +89,7 @@
                     
                     <el-button
                       :type="isFavorite(row.id) ? 'warning' : 'default'"
+                      :loading="favoriteLoading[row.id]"
                       size="small"
                       circle
                       @click.stop="toggleFavorite(row)"
@@ -127,21 +128,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { VideoPlay, VideoPause, Headset, Star, StarFilled, List } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { musicApi } from '@/api/music'
 import { usePlayerStore } from '@/stores/player'
-import type { Music } from '@/types'
+import type { Music } from '@/api/music'
 
 const playerStore = usePlayerStore()
-const musicList = ref<Music[]>([])
+const allMusicList = ref<Music[]>([])
+const favoriteMusicList = ref<Music[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const favoriteLoading = reactive<Record<number, boolean>>({})
+
+// 收藏的音乐ID集合
+const favoriteIds = ref<Set<number>>(new Set())
 
 // 菜单相关
 const activeMenu = ref('all')
-const favoriteIds = ref<Set<number>>(new Set())
 
 // 分页相关
 const currentPage = ref(1)
@@ -150,14 +155,9 @@ const pageSize = ref(20)
 // 根据当前菜单计算要显示的音乐列表
 const displayMusicList = computed(() => {
   if (activeMenu.value === 'favorite') {
-    return musicList.value.filter(music => favoriteIds.value.has(music.id))
+    return favoriteMusicList.value
   }
-  return musicList.value
-})
-
-// 收藏的音乐列表
-const favoriteMusicList = computed(() => {
-  return musicList.value.filter(music => favoriteIds.value.has(music.id))
+  return allMusicList.value
 })
 
 // 计算当前页显示的数据
@@ -168,52 +168,86 @@ const paginatedMusicList = computed(() => {
 })
 
 onMounted(async () => {
-  await fetchMusicList()
-  loadFavorites()
+  await Promise.all([
+    fetchAllMusic(),
+    fetchFavoriteIds(),
+    fetchFavoriteMusic()
+  ])
 })
 
-async function fetchMusicList() {
+// 获取所有音乐
+async function fetchAllMusic() {
   try {
     loading.value = true
-    musicList.value = await musicApi.getMusicList()
-    console.log('获取到的音乐列表:', musicList.value)
-    playerStore.setMusicList(musicList.value)
-    loading.value = false
+    allMusicList.value = await musicApi.getMusicList()
+    playerStore.setMusicList(allMusicList.value)
   } catch (err: any) {
     error.value = `获取音乐列表失败：${err.message}`
-    loading.value = false
     console.error('错误详情:', err)
+  } finally {
+    loading.value = false
   }
 }
 
-// 加载收藏列表（从 localStorage）
-function loadFavorites() {
-  const saved = localStorage.getItem('favoriteMusicIds')
-  if (saved) {
-    try {
-      const ids = JSON.parse(saved)
-      favoriteIds.value = new Set(ids)
-    } catch (e) {
-      console.error('加载收藏列表失败:', e)
-    }
+// 获取收藏的音乐ID列表
+async function fetchFavoriteIds() {
+  try {
+    const response = await musicApi.getFavoriteMusicIds()
+    favoriteIds.value = new Set(response)
+    console.log('收藏的音乐ID列表:', favoriteIds.value)
+  } catch (err: any) {
+    console.error('获取收藏列表失败:', err)
   }
 }
 
-// 保存收藏列表到 localStorage
-function saveFavorites() {
-  localStorage.setItem('favoriteMusicIds', JSON.stringify([...favoriteIds.value]))
+// 获取收藏的音乐列表
+async function fetchFavoriteMusic() {
+  try {
+    loading.value = true
+    const response = await musicApi.getFavoriteMusic()
+    favoriteMusicList.value = response
+  } catch (err: any) {
+    error.value = `获取收藏列表失败：${err.message}`
+    console.error('错误详情:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 切换收藏状态
-function toggleFavorite(music: Music) {
-  if (favoriteIds.value.has(music.id)) {
-    favoriteIds.value.delete(music.id)
-    ElMessage.success(`已取消收藏：${music.name}`)
-  } else {
-    favoriteIds.value.add(music.id)
-    ElMessage.success(`已收藏：${music.name}`)
+async function toggleFavorite(music: Music) {
+  favoriteLoading[music.id] = true
+  
+  try {
+    if (favoriteIds.value.has(music.id)) {
+      // 取消收藏
+      await musicApi.removeFavorite(music.id)
+      favoriteIds.value.delete(music.id)
+      
+      // 如果当前在收藏列表页，需要刷新列表
+      // if (activeMenu.value === 'favorite') {
+        // favoriteMusicList.value = favoriteMusicList.value.filter(m => m.id !== music.id)
+      // }
+      await fetchFavoriteMusic()
+      
+      ElMessage.success(`已取消收藏：${music.name}`)
+    } else {
+      // 添加收藏
+      await musicApi.addFavorite(music.id)
+      favoriteIds.value.add(music.id)
+      
+      // 如果当前在收藏列表页，需要刷新列表
+      // if (activeMenu.value === 'favorite') {
+      await fetchFavoriteMusic()
+      // }
+      
+      ElMessage.success(`已收藏：${music.name}`)
+    }
+  } catch (err: any) {
+    ElMessage.error(err.response?.data?.error || '操作失败')
+  } finally {
+    favoriteLoading[music.id] = false
   }
-  saveFavorites()
 }
 
 // 判断是否已收藏
@@ -222,9 +256,14 @@ function isFavorite(id: number) {
 }
 
 // 菜单选择处理
-function handleMenuSelect(index: string) {
+async function handleMenuSelect(index: string) {
   activeMenu.value = index
-  currentPage.value = 1 // 切换菜单时回到第一页
+  currentPage.value = 1
+  
+  // 切换到收藏列表时，重新获取数据
+  if (index === 'favorite') {
+    await fetchFavoriteMusic()
+  }
 }
 
 function handleRowClick(row: Music) {
@@ -312,7 +351,6 @@ function handleCurrentChange(val: number) {
   background-color: #d9ecff !important;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
   .music-container {
     flex-direction: column;
